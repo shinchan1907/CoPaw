@@ -1,4 +1,5 @@
 import {
+  Alert,
   Drawer,
   Form,
   Input,
@@ -26,6 +27,7 @@ interface ChannelDrawerProps {
 
 // DingTalk doc URL
 const dingtalkDocUrl = "https://copaw.agentscope.io/docs/channels";
+const twilioConsoleUrl = "https://console.twilio.com";
 
 export function ChannelDrawer({
   open,
@@ -129,6 +131,12 @@ export function ChannelDrawer({
       case "voice":
         return (
           <>
+            <Alert
+              type="info"
+              showIcon
+              message={t("channels.voiceSetupGuide")}
+              style={{ marginBottom: 16 }}
+            />
             <Form.Item
               name="twilio_account_sid"
               label={t("channels.twilioAccountSid")}
@@ -147,6 +155,7 @@ export function ChannelDrawer({
             <Form.Item
               name="phone_number_sid"
               label={t("channels.phoneNumberSid")}
+              tooltip="Found under Phone Numbers → Active Numbers in Twilio"
             >
               <Input placeholder="PNxxxxxxxx" />
             </Form.Item>
@@ -173,9 +182,6 @@ export function ChannelDrawer({
               label={t("channels.maxConcurrentCalls")}
             >
               <InputNumber min={1} style={{ width: "100%" }} />
-            </Form.Item>
-            <Form.Item name="local_port" label={t("channels.localPort")}>
-              <InputNumber min={1024} max={65535} style={{ width: "100%" }} />
             </Form.Item>
           </>
         );
@@ -204,6 +210,17 @@ export function ChannelDrawer({
               className={styles.dingtalkDocBtn}
             >
               DingTalk Doc
+            </Button>
+          )}
+          {activeKey === "voice" && (
+            <Button
+              type="text"
+              size="small"
+              icon={<LinkOutlined />}
+              onClick={() => window.open(twilioConsoleUrl, "_blank")}
+              className={styles.dingtalkDocBtn}
+            >
+              {t("channels.voiceSetupLink")}
             </Button>
           )}
         </div>

@@ -71,7 +71,6 @@ class VoiceChannelConfig(BaseChannelConfig):
     language: str = "en-US"
     welcome_greeting: str = "Hi! This is CoPaw. How can I help you?"
     max_concurrent_calls: int = 1
-    local_port: int = 8088
 
 
 class ChannelConfig(BaseModel):

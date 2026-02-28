@@ -83,11 +83,13 @@ class VoiceChannel(BaseChannel):
             )
             return
 
-        # Start Cloudflare tunnel
+        # Start Cloudflare tunnel pointing at the app's serving port
         from copaw.tunnel import CloudflareTunnelDriver
+        from copaw.config.utils import read_last_api
 
         self.tunnel_mgr = CloudflareTunnelDriver()
-        local_port = getattr(self._config, "local_port", 8088)
+        api_info = read_last_api()
+        local_port = api_info[1] if api_info else 8088
 
         try:
             tunnel_info = await self.tunnel_mgr.start(local_port)

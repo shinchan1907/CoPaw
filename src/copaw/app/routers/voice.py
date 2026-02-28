@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Voice channel routers.
+"""Voice channel router.
 
-Two routers are exported:
-
-* ``voice_router`` -- Twilio-facing endpoints mounted at the app root
-  (``/voice/incoming``, ``/voice/ws``, ``/voice/status-callback``).
-* ``voice_api_router`` -- Console-facing API endpoints mounted under
-  ``/api/`` (``/api/voice/status``, ``/api/voice/numbers/search``, etc.).
+Exports ``voice_router`` with Twilio-facing endpoints mounted at the app root:
+``/voice/incoming``, ``/voice/ws``, ``/voice/status-callback``.
 """
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -172,129 +167,3 @@ async def voice_status_callback(request: Request) -> Response:
             voice_ch.session_mgr.end_session(str(call_sid))
 
     return Response(content="", status_code=204)
-
-
-# ---------------------------------------------------------------------------
-# Console-facing API router (mounted under /api/)
-# NOTE: Authentication is not yet implemented for any CoPaw API route.
-# When project-wide auth is added, these endpoints should be gated too.
-# ---------------------------------------------------------------------------
-voice_api_router = APIRouter(prefix="/voice", tags=["voice"])
-
-
-@voice_api_router.get("/status")
-async def voice_status(request: Request):
-    """Return voice channel status: tunnel, active calls, phone number."""
-    voice_ch = _get_voice_channel(request)
-    if not voice_ch:
-        return {
-            "enabled": False,
-            "tunnel_url": None,
-            "active_calls": 0,
-            "phone_number": None,
-        }
-
-    config = voice_ch.config
-    return {
-        "enabled": getattr(config, "enabled", False),
-        "tunnel_url": voice_ch.get_tunnel_url(),
-        "active_calls": voice_ch.session_mgr.active_count(),
-        "phone_number": getattr(config, "phone_number", ""),
-        "phone_number_sid": getattr(config, "phone_number_sid", ""),
-        "sessions": [
-            {
-                "call_sid": s.call_sid,
-                "from_number": s.from_number,
-                "to_number": s.to_number,
-                "started_at": s.started_at.isoformat(),
-                "status": s.status,
-            }
-            for s in voice_ch.session_mgr.all_sessions()
-        ],
-    }
-
-
-@voice_api_router.get("/numbers/search")
-async def voice_numbers_search(
-    request: Request,
-    country: str = "US",
-    area_code: Optional[str] = None,
-):
-    """Search for available Twilio phone numbers."""
-    voice_ch = _get_voice_channel(request)
-    if not voice_ch or not voice_ch.twilio_mgr:
-        return {"error": "Voice channel or Twilio credentials not configured"}
-
-    try:
-        numbers = await voice_ch.twilio_mgr.search_available_numbers(
-            country=country,
-            area_code=area_code,
-        )
-        return {
-            "numbers": [
-                {
-                    "phone_number": n.phone_number,
-                    "friendly_name": n.friendly_name,
-                    "locality": n.locality,
-                    "region": n.region,
-                    "country": n.country,
-                }
-                for n in numbers
-            ],
-        }
-    except Exception as e:
-        logger.exception("Failed to search numbers")
-        return {"error": str(e)}
-
-
-@voice_api_router.post("/numbers/provision")
-async def voice_numbers_provision(request: Request):
-    """Provision (purchase) a Twilio phone number."""
-    voice_ch = _get_voice_channel(request)
-    if not voice_ch or not voice_ch.twilio_mgr:
-        return {"error": "Voice channel or Twilio credentials not configured"}
-
-    body = await request.json()
-    phone_number = body.get("phone_number", "")
-    if not phone_number:
-        return {"error": "phone_number is required"}
-
-    tunnel_url = voice_ch.get_tunnel_url()
-    if not tunnel_url:
-        return {"error": "Tunnel is not running; cannot configure webhook"}
-    webhook_url = f"{tunnel_url}/voice/incoming"
-
-    try:
-        result = await voice_ch.twilio_mgr.provision_number(
-            phone_number=phone_number,
-            voice_url=webhook_url,
-        )
-        return {
-            "sid": result.sid,
-            "phone_number": result.phone_number,
-            "friendly_name": result.friendly_name,
-        }
-    except Exception as e:
-        logger.exception("Failed to provision number")
-        return {"error": str(e)}
-
-
-@voice_api_router.get("/calls")
-async def voice_calls(request: Request):
-    """List call sessions (active and recent)."""
-    voice_ch = _get_voice_channel(request)
-    if not voice_ch:
-        return {"calls": []}
-
-    return {
-        "calls": [
-            {
-                "call_sid": s.call_sid,
-                "from_number": s.from_number,
-                "to_number": s.to_number,
-                "started_at": s.started_at.isoformat(),
-                "status": s.status,
-            }
-            for s in voice_ch.session_mgr.all_sessions()
-        ],
-    }

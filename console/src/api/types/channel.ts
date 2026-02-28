@@ -45,7 +45,6 @@ export interface VoiceChannelConfig extends BaseChannelConfig {
   language: string;
   welcome_greeting: string;
   max_concurrent_calls: number;
-  local_port: number;
 }
 
 export interface ChannelConfig {

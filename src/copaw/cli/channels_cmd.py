@@ -502,13 +502,6 @@ def configure_voice(
         )
         current_config.max_concurrent_calls = max_concurrent_calls
 
-        local_port = click.prompt(
-            "Local port for voice server",
-            default=current_config.local_port,
-            type=int,
-        )
-        current_config.local_port = local_port
-
     return current_config
 
 
